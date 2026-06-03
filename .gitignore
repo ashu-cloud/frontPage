@@ -1,0 +1,4 @@
+quotesvc.db
+*.db-shm
+*.db-wal
+/server

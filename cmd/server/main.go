@@ -8,6 +8,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
+	apihttp "github.com/frontpage/quotesvc/internal/http"
 	"github.com/frontpage/quotesvc/internal/store"
 )
 
@@ -27,20 +28,13 @@ func main() {
 	if err := st.Migrate(); err != nil {
 		log.Fatalf("migrate: %v", err)
 	}
-	_ = st
-
 	addr := os.Getenv("QUOTESVC_ADDR")
 	if addr == "" {
 		addr = ":8080"
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok"))
-	})
-
 	log.Printf("listening on %s (db: %s)", addr, path)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := http.ListenAndServe(addr, apihttp.NewServer(st)); err != nil {
 		log.Fatalf("serve: %v", err)
 	}
 }

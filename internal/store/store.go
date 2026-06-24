@@ -90,3 +90,19 @@ func (s *Store) GetQuote(id int64) (*Quote, error) {
 	}
 	return &q, nil
 }
+
+// GetQuoteBySymbol returns one quote by ticker symbol.
+func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
+	var q Quote
+	err := s.db.QueryRow(`
+		SELECT id, symbol, name, price, prev_close, updated_at
+		FROM quotes WHERE UPPER(symbol) = UPPER(?)`, symbol).
+		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &q, nil
+}

@@ -137,3 +137,12 @@ func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
 	}
 	return out, rows.Err()
 }
+
+// AddToWatchlist records that a user is following a symbol.
+func (s *Store) AddToWatchlist(userID int64, symbol string) error {
+	_, err := s.db.Exec(`
+		INSERT INTO watchlist (user_id, symbol, created_at)
+		VALUES (?, ?, ?)`,
+		userID, symbol, time.Now().UTC().Format(time.RFC3339))
+	return err
+}

@@ -23,6 +23,7 @@ func NewServer(s *store.Store) *Server {
 func (s *Server) routes() {
 	s.mux.HandleFunc("/quotes/", withLogging(s.handleGetQuote))
 	s.mux.HandleFunc("/watchlist/", s.handleGetWatchlist)
+	s.mux.HandleFunc("/watchlist", s.handleAddToWatchlist)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -82,6 +83,37 @@ func (s *Server) handleGetWatchlist(w http.ResponseWriter, r *http.Request) {
 		"user_id": userID,
 		"symbols": items,
 	})
+}
+
+// POST /watchlist
+func (s *Server) handleAddToWatchlist(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var body struct {
+		UserID int64  `json:"user_id"`
+		Symbol string `json:"symbol"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+	if body.UserID < 1 {
+		writeError(w, http.StatusBadRequest, "user_id is required")
+		return
+	}
+	if strings.TrimSpace(body.Symbol) == "" {
+		writeError(w, http.StatusBadRequest, "symbol is required")
+		return
+	}
+
+	if err := s.store.AddToWatchlist(body.UserID, strings.ToUpper(body.Symbol)); err != nil {
+		writeError(w, http.StatusInternalServerError, "could not add to watchlist")
+		return
+	}
+	writeJSON(w, http.StatusCreated, map[string]any{"ok": true})
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

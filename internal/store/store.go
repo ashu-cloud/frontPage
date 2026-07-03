@@ -21,6 +21,13 @@ type Quote struct {
 	UpdatedAt string  `json:"updated_at"`
 }
 
+// WatchlistItem is one symbol a user follows, joined to its current price.
+type WatchlistItem struct {
+	Symbol  string  `json:"symbol"`
+	Price   float64 `json:"price"`
+	AddedAt string  `json:"added_at"`
+}
+
 type Store struct {
 	db *sql.DB
 }
@@ -105,4 +112,28 @@ func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
 		return nil, err
 	}
 	return &q, nil
+}
+
+// GetWatchlist returns everything a user follows, with current prices.
+func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
+	rows, err := s.db.Query(`
+		SELECT w.symbol, q.price, w.created_at
+		FROM watchlist w
+		JOIN quotes q ON UPPER(q.symbol) = UPPER(w.symbol)
+		WHERE w.user_id = ?
+		ORDER BY w.created_at ASC`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []WatchlistItem{}
+	for rows.Next() {
+		var it WatchlistItem
+		if err := rows.Scan(&it.Symbol, &it.Price, &it.AddedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, it)
+	}
+	return out, rows.Err()
 }

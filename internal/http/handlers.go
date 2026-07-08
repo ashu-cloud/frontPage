@@ -23,7 +23,7 @@ func NewServer(s *store.Store) *Server {
 func (s *Server) routes() {
 	s.mux.HandleFunc("/quotes/", withLogging(s.handleGetQuote))
 	s.mux.HandleFunc("/watchlist/", s.handleGetWatchlist)
-	s.mux.HandleFunc("/watchlist", s.handleAddToWatchlist)
+	s.mux.HandleFunc("/watchlist", withLogging(s.handleAddToWatchlist))
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {

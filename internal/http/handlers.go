@@ -22,6 +22,7 @@ func NewServer(s *store.Store) *Server {
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("/quotes/", withLogging(s.handleGetQuote))
+	s.mux.HandleFunc("/quotes", withLogging(s.handleListQuotes))
 	s.mux.HandleFunc("/watchlist/", s.handleGetWatchlist)
 	s.mux.HandleFunc("/watchlist", withLogging(s.handleAddToWatchlist))
 }
@@ -58,6 +59,24 @@ func (s *Server) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, q)
+}
+
+// GET /quotes
+func (s *Server) handleListQuotes(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	quotes, err := s.store.ListQuotes()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not list quotes")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"quotes": quotes,
+		"count":  len(quotes),
+	})
 }
 
 // GET /watchlist/{userID}

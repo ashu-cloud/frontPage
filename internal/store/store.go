@@ -114,6 +114,28 @@ func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
 	return &q, nil
 }
 
+// ListQuotes returns every quote, most recently updated first.
+func (s *Store) ListQuotes() ([]Quote, error) {
+	rows, err := s.db.Query(`
+		SELECT id, symbol, name, price, prev_close, updated_at
+		FROM quotes
+		ORDER BY updated_at DESC, id ASC`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []Quote{}
+	for rows.Next() {
+		var q Quote
+		if err := rows.Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, q)
+	}
+	return out, rows.Err()
+}
+
 // GetWatchlist returns everything a user follows, with current prices.
 func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
 	rows, err := s.db.Query(`

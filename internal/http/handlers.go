@@ -9,6 +9,11 @@ import (
 	"github.com/frontpage/quotesvc/internal/store"
 )
 
+const (
+	defaultQuoteLimit = 50
+	maxQuoteLimit     = 200
+)
+
 type Server struct {
 	store *store.Store
 	mux   *http.ServeMux
@@ -61,14 +66,27 @@ func (s *Server) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, q)
 }
 
-// GET /quotes
+// GET /quotes?limit=N
 func (s *Server) handleListQuotes(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	quotes, err := s.store.ListQuotes()
+	limit := defaultQuoteLimit
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 {
+			writeError(w, http.StatusBadRequest, "limit must be a positive integer")
+			return
+		}
+		limit = n
+	}
+	if limit > maxQuoteLimit {
+		limit = maxQuoteLimit
+	}
+
+	quotes, err := s.store.ListQuotes(limit)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not list quotes")
 		return

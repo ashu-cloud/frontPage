@@ -114,12 +114,13 @@ func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
 	return &q, nil
 }
 
-// ListQuotes returns every quote, most recently updated first.
-func (s *Store) ListQuotes() ([]Quote, error) {
+// ListQuotes returns up to limit quotes, most recently updated first.
+func (s *Store) ListQuotes(limit int) ([]Quote, error) {
 	rows, err := s.db.Query(`
 		SELECT id, symbol, name, price, prev_close, updated_at
 		FROM quotes
-		ORDER BY updated_at DESC, id ASC`)
+		ORDER BY updated_at DESC, id ASC
+		LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}

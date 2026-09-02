@@ -28,3 +28,7 @@ prices updating continuously through market hours -- roughly 2M writes a
 day.
 
 The seed data here is 50 quotes so the service runs locally.
+
+## Tests
+
+    go test ./...

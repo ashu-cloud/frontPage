@@ -87,7 +87,7 @@ func (s *Store) GetQuote(id int64) (*Quote, error) {
 	var q Quote
 	err := s.db.QueryRow(`
 		SELECT id, symbol, name, price, prev_close, updated_at
-		FROM quotes WHERE id = ?`, id).
+		FROM quotes WHERE id = ? AND delisted = 0`, id).
 		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -103,7 +103,7 @@ func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
 	var q Quote
 	err := s.db.QueryRow(`
 		SELECT id, symbol, name, price, prev_close, updated_at
-		FROM quotes WHERE UPPER(symbol) = UPPER(?)`, symbol).
+		FROM quotes WHERE symbol = ? AND delisted = 0`, symbol).
 		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -119,6 +119,7 @@ func (s *Store) ListQuotes(limit int) ([]Quote, error) {
 	rows, err := s.db.Query(`
 		SELECT id, symbol, name, price, prev_close, updated_at
 		FROM quotes
+		WHERE delisted = 0
 		ORDER BY updated_at DESC, id ASC
 		LIMIT ?`, limit)
 	if err != nil {
@@ -142,7 +143,7 @@ func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
 	rows, err := s.db.Query(`
 		SELECT w.symbol, q.price, w.created_at
 		FROM watchlist w
-		JOIN quotes q ON UPPER(q.symbol) = UPPER(w.symbol)
+		JOIN quotes q ON q.symbol = w.symbol AND q.delisted = 0
 		WHERE w.user_id = ?
 		ORDER BY w.created_at ASC`, userID)
 	if err != nil {

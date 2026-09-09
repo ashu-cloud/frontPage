@@ -1,6 +1,6 @@
 module github.com/frontpage/quotesvc
 
-go 1.21
+go 1.23.0
 
 require modernc.org/sqlite v1.28.0
 

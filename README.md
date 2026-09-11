@@ -35,9 +35,23 @@ The seed here is a 5,000 symbol slice so the service runs locally.
 
 ## Your task
 
-Right now users can only find a stock if they already know its id.
+### 1. Search
 
-Add a search endpoint so they can find quotes by symbol or by company name.
+`GET /quotes/{id}` is the only way to fetch a specific stock, so you have to
+know its id already.
+
+Add a search endpoint so users can find quotes by symbol or by company name.
+
+### 2. A bug report
+
+Support forwarded this:
+
+> "One of the stocks on my watchlist has disappeared. I didn't remove it,
+> and it was definitely there yesterday."
+
+That's user id 7. Have a look at why this is happening.
+
+---
 
 Use whatever editor and AI tools you normally work with.
 

@@ -6,8 +6,8 @@ A small service for stock quotes and user watchlists.
 
     go run ./cmd/server
 
-Needs Go 1.21 or newer. Nothing else to install -- the database is SQLite
-and gets created on first run.
+Needs Go 1.23 or newer. Nothing else to install -- the database is
+SQLite and gets created on first run.
 
     curl localhost:8080/quotes/1
 
@@ -24,11 +24,19 @@ the listen address.
 ## Data
 
 Quotes come from the market data feed. We track around 2M symbols, with
-prices updating continuously through market hours -- roughly 2M writes a
-day.
+prices updating continuously through market hours -- roughly 2M writes an
+hour.
 
-The seed data here is 50 quotes so the service runs locally.
+The seed here is a 5,000 symbol slice so the service runs locally.
 
 ## Tests
 
     go test ./...
+
+## Your task
+
+Right now users can only find a stock if they already know its id.
+
+Add a search endpoint so they can find quotes by symbol or by company name.
+
+Use whatever editor and AI tools you normally work with.

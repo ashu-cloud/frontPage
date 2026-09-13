@@ -40,3 +40,9 @@ Right now users can only find a stock if they already know its id.
 Add a search endpoint so they can find quotes by symbol or by company name.
 
 Use whatever editor and AI tools you normally work with.
+
+## Submitting
+
+1. Clone this repo rather than forking it.
+2. Push your work to a new public repo on your own GitHub account.
+3. Work on a branch and open a PR against your own `main`, then send us the link.

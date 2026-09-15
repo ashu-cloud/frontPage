@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,7 @@ func NewServer(s *store.Store) *Server {
 }
 
 func (s *Server) routes() {
+	s.mux.HandleFunc("/quote/", withLogging(s.handleFindQuote))
 	s.mux.HandleFunc("/quotes/", withLogging(s.handleGetQuote))
 	s.mux.HandleFunc("/quotes", withLogging(s.handleListQuotes))
 	s.mux.HandleFunc("/watchlist/", s.handleGetWatchlist)
@@ -55,6 +57,41 @@ func (s *Server) handleGetQuote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q, err := s.store.GetQuote(id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "could not load quote")
+		return
+	}
+	if q == nil {
+		writeError(w, http.StatusNotFound, "quote not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, q)
+}
+
+// GET /quote/{symbol or company name}
+func (s *Server) handleFindQuote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	raw := strings.TrimPrefix(r.URL.Path, "/quote/")
+	if raw == "" {
+		writeError(w, http.StatusBadRequest, "symbol or company name is required")
+		return
+	}
+
+	query, err := url.PathUnescape(raw)
+	if err != nil {
+		query = raw
+	}
+	query = strings.TrimSpace(query)
+	if query == "" {
+		writeError(w, http.StatusBadRequest, "symbol or company name is required")
+		return
+	}
+
+	q, err := s.store.FindQuote(query)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not load quote")
 		return

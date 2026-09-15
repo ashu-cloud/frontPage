@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -23,9 +24,10 @@ type Quote struct {
 
 // WatchlistItem is one symbol a user follows, joined to its current price.
 type WatchlistItem struct {
-	Symbol  string  `json:"symbol"`
-	Price   float64 `json:"price"`
-	AddedAt string  `json:"added_at"`
+	Symbol   string  `json:"symbol"`
+	Price    float64 `json:"price"`
+	AddedAt  string  `json:"added_at"`
+	Delisted bool    `json:"delisted"`
 }
 
 type Store struct {
@@ -114,6 +116,65 @@ func (s *Store) GetQuoteBySymbol(symbol string) (*Quote, error) {
 	return &q, nil
 }
 
+// FindQuote searches for a quote by ticker symbol (uppercased) or by company name
+// (spaces stripped and lowercased). Returns the untampered quote data from the database.
+func (s *Store) FindQuote(query string) (*Quote, error) {
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" {
+		return nil, nil
+	}
+
+	upper := strings.ToUpper(trimmed)
+	lower := strings.ToLower(trimmed)
+
+	// 1. Try matching by ticker symbol (uppercased)
+	var q Quote
+	err := s.db.QueryRow(`
+		SELECT id, symbol, name, price, prev_close, updated_at
+		FROM quotes
+		WHERE symbol = ? AND delisted = 0`, upper).
+		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
+	if err == nil {
+		return &q, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// 2. Try matching by company name (trimmed and lowercased, or with all spaces stripped)
+	err = s.db.QueryRow(`
+		SELECT id, symbol, name, price, prev_close, updated_at
+		FROM quotes
+		WHERE delisted = 0 AND (
+			LOWER(TRIM(name)) = ? OR
+			REPLACE(LOWER(name), ' ', '') = REPLACE(?, ' ', '')
+		)
+		LIMIT 1`, lower, lower).
+		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
+	if err == nil {
+		return &q, nil
+	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	// 3. Fallback: partial match on company name
+	err = s.db.QueryRow(`
+		SELECT id, symbol, name, price, prev_close, updated_at
+		FROM quotes
+		WHERE delisted = 0 AND LOWER(name) LIKE ?
+		ORDER BY LENGTH(name) ASC
+		LIMIT 1`, "%"+lower+"%").
+		Scan(&q.ID, &q.Symbol, &q.Name, &q.Price, &q.PrevClose, &q.UpdatedAt)
+	if err == nil {
+		return &q, nil
+	}
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return nil, err
+}
+
 // ListQuotes returns up to limit quotes, most recently updated first.
 func (s *Store) ListQuotes(limit int) ([]Quote, error) {
 	rows, err := s.db.Query(`
@@ -138,12 +199,12 @@ func (s *Store) ListQuotes(limit int) ([]Quote, error) {
 	return out, rows.Err()
 }
 
-// GetWatchlist returns everything a user follows, with current prices.
+// GetWatchlist returns everything a user follows, with current prices and delisted status.
 func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
 	rows, err := s.db.Query(`
-		SELECT w.symbol, q.price, w.created_at
+		SELECT w.symbol, COALESCE(q.price, 0), w.created_at, COALESCE(q.delisted, 0)
 		FROM watchlist w
-		JOIN quotes q ON q.symbol = w.symbol AND q.delisted = 0
+		LEFT JOIN quotes q ON q.symbol = w.symbol
 		WHERE w.user_id = ?
 		ORDER BY w.created_at ASC`, userID)
 	if err != nil {
@@ -154,9 +215,11 @@ func (s *Store) GetWatchlist(userID int64) ([]WatchlistItem, error) {
 	out := []WatchlistItem{}
 	for rows.Next() {
 		var it WatchlistItem
-		if err := rows.Scan(&it.Symbol, &it.Price, &it.AddedAt); err != nil {
+		var delisted int
+		if err := rows.Scan(&it.Symbol, &it.Price, &it.AddedAt, &delisted); err != nil {
 			return nil, err
 		}
+		it.Delisted = delisted == 1
 		out = append(out, it)
 	}
 	return out, rows.Err()
